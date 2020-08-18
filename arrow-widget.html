@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <!-- include minimal d3.js -->
+      <script src = "https://d3js.org/d3.v4.min.js"></script>
+   </head>
+
+   <body>
+      <p id = "coords">theta=</p>
+      <div id = "svgcontainer"></div>
+      <script>
+         // dynamically created content
+         var width = 800;
+         var height = 800;
+         var origin = [500, 350];
+         var svg = d3.select("#svgcontainer") // place an svg element in the svgcontainer div
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+         var coordLabel = d3.select("#coords");
+
+         function renderArrows(theta) {
+            var d = 1.0;
+            var x0 = origin[0];
+            var y0 = origin[1];
+            var x = 0.0;
+            var y = 0.0;
+            for (var i = 0; i < colorset.length; i++) {
+               if(Math.abs(d) <= 0.08){
+                  updateArrow("arrow" + i.toString(), 0, 0, 0, 0, "hidden");
+                  continue;
+               }
+               switch(i % 4) {
+                  case 0:
+                     x = d*aSize;
+                     y = 0.0;
+                     break;
+                  case 1:
+                     x = 0.0;
+                     y = d*aSize;
+                     break;
+                  case 2:
+                     x = -d*aSize;
+                     y = 0.0;
+                     break;
+                  default:
+                     x = 0.0;
+                     y = -d*aSize;
+                     break;
+               }
+               updateArrow("arrow" + i.toString(), x0, y0, x, y, "visible");
+               d *= theta/(i+1);
+               x0 += x;
+               y0 -= y;
+            }
+            updateArrow("swoop", origin[0], origin[1], aSize*Math.cos(theta), aSize*Math.sin(theta));
+         }
+
+         svg.on("mousemove", function() {
+            var mouse = d3.mouse(this);
+            var theta = Math.atan2(origin[1] - mouse[1], mouse[0] - origin[0]); // radians
+            coordLabel.text("theta=" + theta.toString());
+            renderArrows(theta);
+
+            var arc = d3.select("#arc");
+            arc.attr("d", arcPath(40, theta));
+         });
+
+         // define arrowhead marker, one for every used color
+         // NOTE: always use #... format for the color
+         function arrowhead(color) {
+            svg.append("svg:marker")
+               .attr("id", color.replace("#", ""))
+               .attr("refX", 4)
+               .attr("refY", 2.5)
+               .attr("markerWidth", 6)
+               .attr("markerHeight", 6)
+               .attr("orient", "auto")
+               .append("path")
+               .attr("d", "M0,0 L5,2.5 L0,5 Z")
+               .attr("fill", color);
+         }
+
+         // draw line with arrow at the end
+         function drawArrow(svg, x1, y1, w, h, color, id, visibility) {
+            svg.append("line")
+               .attr("id", id)
+               .attr("x1", x1)
+               .attr("y1", y1)
+               .attr("x2", x1 + w)
+               .attr("y2", y1 - h)
+               .attr("stroke-width", 3)
+               .attr("stroke", color)
+               .attr("marker-end", "url(" + color + ")")
+               .attr("visibility", visibility);
+               //.attr("transform", "scale(0.8)");
+         }
+
+         // update arrow
+         function updateArrow(id, x1, y1, w, h, color, visibility) {
+            var arrow = d3.select("#" + id);
+            arrow.attr("x1", x1);
+            arrow.attr("y1", y1);
+            arrow.attr("x2", x1 + w);
+            arrow.attr("y2", y1 - h);
+            arrow.attr("visibility", visibility);
+         }
+
+         // generate arc path
+         function arcPath(arcSize, theta) {
+            var originString = (origin[0] + arcSize).toString() + " " + origin[1].toString();
+            var endX = origin[0] + arcSize*Math.cos(theta);
+            var endY = origin[1] - arcSize*Math.sin(theta);
+            var endString = endX.toString() + "," + endY.toString();
+            var modeString = "0,0 ";
+            if(theta < 0){
+               modeString = "0,1 ";
+            }
+            return("M" + originString + " A" + arcSize + "," + arcSize + " 0 " + modeString + endString)
+         }
+
+         // Viridis colorspace from matplotlib
+         // get_cmap('viridis')(linspace(0,1,9))
+         var colorset = [
+            "#440154",
+            "#482778",
+            "#3e4989",
+            "#30688e",
+            "#25838e",
+            "#1e9e89",
+            "#35b779",
+            "#6ece58",
+            "#b5de2b",
+            "#fee724"
+         ];
+
+         // Define arrowheads of desired colors
+         for (var i = colorset.length - 1; i >= 0; i--) {
+            arrowhead(colorset[i]);
+         }
+         arrowhead("#ee1111"); // a special flavor of red
+
+         // Draw arc and theta label
+         var theta0 = 0.262; //initial theta value
+         svg.append("path")
+            .attr("id", "arc")
+            .attr("d", arcPath(40, theta0))
+            .attr("style", "stroke:#000000; stroke-width:2; fill:none");
+
+         // Draw arrows
+         var aSize = 110;
+         for (var i = 0; i <= colorset.length; i++) {
+            drawArrow(svg, 0, 0, 0, 0, colorset[i], "arrow" + i.toString(), "hidden");
+         }
+         drawArrow(svg, 0, 0, 0, 0, "#ee1111", "swoop", "visible");
+         renderArrows(theta0);
+      </script>
+   </body>
+</html>
